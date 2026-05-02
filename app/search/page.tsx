@@ -30,8 +30,11 @@ function SearchContent() {
     initialLocation ? [initialLocation] : []
   )
   const [minRating, setMinRating] = useState(0)
+  const [onlyVerified, setOnlyVerified] = useState(false)
   const [results, setResults] = useState<ServiceProvider[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [currentPage, setCurrentPage] = useState(1)
+  const ITEMS_PER_PAGE = 9
 
   useEffect(() => {
     setIsLoading(true)
@@ -59,32 +62,60 @@ function SearchContent() {
 
       // Sort results
       switch (sortBy) {
+        case "newest":
+          filtered.sort(
+            (a, b) =>
+              new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          )
+          break
         case "rating":
           filtered.sort((a, b) => b.rating - a.rating)
           break
-        case "reviews":
-          filtered.sort((a, b) => b.reviewCount - a.reviewCount)
+        case "views":
+          filtered.sort((a, b) => b.views - a.views)
           break
-        case "name":
-          filtered.sort((a, b) => a.businessName.localeCompare(b.businessName))
+        case "verified":
+          filtered.sort((a, b) => Number(b.verified) - Number(a.verified))
           break
         default:
           // Relevance - featured first
           filtered.sort((a, b) => (b.featured ? 1 : 0) - (a.featured ? 1 : 0))
       }
 
+      if (onlyVerified) {
+        filtered = filtered.filter((provider) => provider.verified)
+      }
+
       setResults(filtered)
+      setCurrentPage(1)
       setIsLoading(false)
     }, 500)
 
     return () => clearTimeout(timer)
-  }, [initialQuery, selectedCategories, selectedLocations, minRating, sortBy])
+  }, [
+    initialQuery,
+    selectedCategories,
+    selectedLocations,
+    minRating,
+    sortBy,
+    onlyVerified,
+  ])
 
   const handleClearFilters = () => {
     setSelectedCategories([])
     setSelectedLocations([])
     setMinRating(0)
+    setOnlyVerified(false)
   }
+
+  const totalPages = Math.max(1, Math.ceil(results.length / ITEMS_PER_PAGE))
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE
+  const paginatedResults = results.slice(startIndex, startIndex + ITEMS_PER_PAGE)
+
+  const visiblePageNumbers = Array.from({ length: totalPages }, (_, i) => i + 1).filter(
+    (page) =>
+      page === 1 || page === totalPages || Math.abs(page - currentPage) <= 1
+  )
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
@@ -104,9 +135,11 @@ function SearchContent() {
           selectedCategories={selectedCategories}
           selectedLocations={selectedLocations}
           minRating={minRating}
+          onlyVerified={onlyVerified}
           onCategoryChange={setSelectedCategories}
           onLocationChange={setSelectedLocations}
           onRatingChange={setMinRating}
+          onVerifiedChange={setOnlyVerified}
           onClearFilters={handleClearFilters}
         />
 
@@ -138,14 +171,17 @@ function SearchContent() {
                   <DropdownMenuItem onClick={() => setSortBy("relevance")}>
                     Relevance
                   </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setSortBy("newest")}>
+                    Newest
+                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setSortBy("rating")}>
-                    Highest Rated
+                    Top Rated
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setSortBy("reviews")}>
-                    Most Reviews
+                  <DropdownMenuItem onClick={() => setSortBy("views")}>
+                    Most Viewed
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setSortBy("name")}>
-                    Name (A-Z)
+                  <DropdownMenuItem onClick={() => setSortBy("verified")}>
+                    Verified First
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -224,13 +260,46 @@ function SearchContent() {
                   : "grid-cols-1"
               }`}
             >
-              {results.map((provider) => (
+              {paginatedResults.map((provider) => (
                 <ServiceCard
                   key={provider.id}
                   provider={provider}
                   variant={viewMode}
                 />
               ))}
+            </div>
+          )}
+
+          {!isLoading && results.length > 0 && totalPages > 1 && (
+            <div className="mt-8 flex items-center justify-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+              >
+                Previous
+              </Button>
+              {visiblePageNumbers.map((page) => (
+                <Button
+                  key={page}
+                  variant={page === currentPage ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setCurrentPage(page)}
+                >
+                  {page}
+                </Button>
+              ))}
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={currentPage === totalPages}
+                onClick={() =>
+                  setCurrentPage((prev) => Math.min(totalPages, prev + 1))
+                }
+              >
+                Next
+              </Button>
             </div>
           )}
         </div>

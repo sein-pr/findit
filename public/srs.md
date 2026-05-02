@@ -4,25 +4,25 @@
 **Codebase Assessed:** Next.js app in current repository  
 **Date:** 2026-05-02
 
-Legend: `? Implemented` `?? Partial` `? Missing`
+Legend: `✅ Implemented` `🟡 Partial` `❌ Missing`
 
 ## 4. Functional Requirements
 
 ### 4.1 Homepage
-- `??` Navbar includes logo/login/register/list-service, but explicit **Categories** nav link is missing.
-- `?` Hero section includes keyword/category search UI.
-- `??` Homepage form uses `keyword` query param while search page expects `q`.
-- `?` Category grid exists.
-- `?` Featured listings section exists.
-- `?` Provider CTA section exists.
-- `??` Footer links exist, but several destination pages are placeholders.
+- `✅` Navbar includes logo, categories link, login/register, and list-service entry points.
+- `✅` Hero section includes keyword/category search UI.
+- `✅` Homepage and search page query parameters are now handled consistently (`q` and `keyword` supported).
+- `✅` Category grid exists.
+- `✅` Featured listings section exists.
+- `✅` Provider CTA section exists.
+- `✅` Footer links route to working About, Contact, Terms, and Privacy pages.
 
 ### 4.2 Search Results Page
-- `?` Search refinement exists.
-- `??` Filters for category/location/rating exist; verified-status filter missing.
-- `??` Sorting partially implemented: relevance/top-rated present; newest/most-viewed missing.
-- `?` Listing cards include key summary + contact actions.
-- `?` Pagination not implemented.
+- `✅` Search refinement exists.
+- `✅` Filters for category/location/rating/verified status are implemented.
+- `✅` Sorting includes relevance, newest, top rated, and most viewed.
+- `✅` Listing cards include key summary + contact actions.
+- `✅` Pagination is implemented on results.
 
 ### 4.3 Provider Profile Page
 - `??` Basic provider information is present; real logo/gallery usage is limited.

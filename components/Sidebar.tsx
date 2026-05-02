@@ -11,9 +11,11 @@ interface SidebarProps {
   selectedCategories: string[]
   selectedLocations: string[]
   minRating: number
+  onlyVerified: boolean
   onCategoryChange: (categories: string[]) => void
   onLocationChange: (locations: string[]) => void
   onRatingChange: (rating: number) => void
+  onVerifiedChange: (verified: boolean) => void
   onClearFilters: () => void
 }
 
@@ -21,9 +23,11 @@ export default function Sidebar({
   selectedCategories,
   selectedLocations,
   minRating,
+  onlyVerified,
   onCategoryChange,
   onLocationChange,
   onRatingChange,
+  onVerifiedChange,
   onClearFilters,
 }: SidebarProps) {
   const [isMobileOpen, setIsMobileOpen] = useState(false)
@@ -45,7 +49,10 @@ export default function Sidebar({
   }
 
   const hasActiveFilters =
-    selectedCategories.length > 0 || selectedLocations.length > 0 || minRating > 0
+    selectedCategories.length > 0 ||
+    selectedLocations.length > 0 ||
+    minRating > 0 ||
+    onlyVerified
 
   const FilterContent = () => (
     <div className="space-y-6">
@@ -117,6 +124,24 @@ export default function Sidebar({
         </div>
       </div>
 
+      {/* Verification */}
+      <div>
+        <h3 className="mb-3 font-semibold text-foreground">Verification</h3>
+        <div className="flex items-center gap-2">
+          <Checkbox
+            id="verified-only"
+            checked={onlyVerified}
+            onCheckedChange={(checked) => onVerifiedChange(!!checked)}
+          />
+          <Label
+            htmlFor="verified-only"
+            className="cursor-pointer text-sm text-muted-foreground"
+          >
+            Verified providers only
+          </Label>
+        </div>
+      </div>
+
       {/* Location */}
       <div>
         <h3 className="mb-3 font-semibold text-foreground">Location</h3>
@@ -154,7 +179,10 @@ export default function Sidebar({
           Filters
           {hasActiveFilters && (
             <span className="ml-2 rounded-full bg-primary px-2 py-0.5 text-xs text-primary-foreground">
-              {selectedCategories.length + selectedLocations.length + (minRating > 0 ? 1 : 0)}
+              {selectedCategories.length +
+                selectedLocations.length +
+                (minRating > 0 ? 1 : 0) +
+                (onlyVerified ? 1 : 0)}
             </span>
           )}
         </Button>
