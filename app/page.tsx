@@ -12,10 +12,12 @@ import {
 } from "@/components/ui/select"
 import CategoryCard from "@/components/CategoryCard"
 import ServiceCard from "@/components/ServiceCard"
-import { categories, getFeaturedProviders } from "@/lib/data"
+import { categories } from "@/lib/data"
+import { getProvidersFromBackend } from "@/lib/server/providers"
 
-export default function HomePage() {
-  const featuredProviders = getFeaturedProviders()
+export default async function HomePage() {
+  const providers = await getProvidersFromBackend()
+  const featuredProviders = providers.filter((provider) => provider.featured)
 
   return (
     <div>

@@ -2,7 +2,7 @@ import Link from "next/link"
 import { Star, MapPin, Phone, CheckCircle } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import type { ServiceProvider } from "@/lib/data"
+import type { ServiceProvider } from "@/lib/types"
 import { categories } from "@/lib/data"
 
 interface ServiceCardProps {

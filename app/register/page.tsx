@@ -10,6 +10,14 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { categories } from "@/lib/data"
 
 export default function RegisterPage() {
   const router = useRouter()
@@ -24,6 +32,7 @@ export default function RegisterPage() {
     confirmPassword: "",
     accountType: "user",
     businessName: "",
+    primaryCategory: "",
     agreeTerms: false,
   })
 
@@ -44,6 +53,11 @@ export default function RegisterPage() {
 
     if (formData.password.length < 8) {
       setError("Password must be at least 8 characters")
+      return
+    }
+
+    if (formData.accountType === "provider" && !formData.primaryCategory) {
+      setError("Please select your primary category")
       return
     }
 
@@ -181,21 +195,44 @@ export default function RegisterPage() {
 
             {/* Business Name (for providers) */}
             {formData.accountType === "provider" && (
-              <div className="space-y-2">
-                <Label htmlFor="businessName">Business Name</Label>
-                <div className="relative">
-                  <Building className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    id="businessName"
-                    type="text"
-                    placeholder="Your Business Name"
-                    value={formData.businessName}
-                    onChange={(e) =>
-                      setFormData({ ...formData, businessName: e.target.value })
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="businessName">Business Name</Label>
+                  <div className="relative">
+                    <Building className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      id="businessName"
+                      type="text"
+                      placeholder="Your Business Name"
+                      value={formData.businessName}
+                      onChange={(e) =>
+                        setFormData({ ...formData, businessName: e.target.value })
+                      }
+                      className="pl-10"
+                      required={formData.accountType === "provider"}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="primaryCategory">Primary Category</Label>
+                  <Select
+                    value={formData.primaryCategory}
+                    onValueChange={(value) =>
+                      setFormData({ ...formData, primaryCategory: value })
                     }
-                    className="pl-10"
-                    required={formData.accountType === "provider"}
-                  />
+                  >
+                    <SelectTrigger id="primaryCategory">
+                      <SelectValue placeholder="Select category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categories.map((category) => (
+                        <SelectItem key={category.id} value={category.id}>
+                          {category.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             )}
@@ -264,11 +301,11 @@ export default function RegisterPage() {
               />
               <Label htmlFor="terms" className="text-sm text-muted-foreground">
                 I agree to the{" "}
-                <Link href="#" className="text-primary hover:underline">
+                <Link href="/terms" className="text-primary hover:underline">
                   Terms of Service
                 </Link>{" "}
                 and{" "}
-                <Link href="#" className="text-primary hover:underline">
+                <Link href="/privacy" className="text-primary hover:underline">
                   Privacy Policy
                 </Link>
               </Label>

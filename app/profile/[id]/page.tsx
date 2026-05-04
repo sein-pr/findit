@@ -1,7 +1,8 @@
 "use client"
 
-import { useState, use } from "react"
+import { useEffect, useState, use } from "react"
 import Link from "next/link"
+import Image from "next/image"
 import {
   MapPin,
   Phone,
@@ -17,18 +18,71 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Textarea } from "@/components/ui/textarea"
 import Rating from "@/components/Rating"
-import { getProviderById, getReviewsByListingId, categories, type Review } from "@/lib/data"
+import { categories } from "@/lib/data"
+import type { Review, ServiceProvider } from "@/lib/types"
 
 export default function ProfilePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
-  const provider = getProviderById(id)
-  const reviews = getReviewsByListingId(id)
+  const [provider, setProvider] = useState<ServiceProvider | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
 
   const [newRating, setNewRating] = useState(5)
   const [newComment, setNewComment] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [localReviews, setLocalReviews] = useState<Review[]>(reviews)
+  const [localReviews, setLocalReviews] = useState<Review[]>([])
   const [isFavorite, setIsFavorite] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+
+    const load = async () => {
+      setIsLoading(true)
+      const [providerResponse, reviewsResponse] = await Promise.all([
+        fetch(`/api/providers/${id}`),
+        fetch(`/api/providers/${id}/reviews`),
+      ])
+
+      if (!providerResponse.ok) {
+        if (!cancelled) {
+          setProvider(null)
+          setLocalReviews([])
+          setIsLoading(false)
+        }
+        return
+      }
+
+      const [providerData, reviewsData] = await Promise.all([
+        providerResponse.json() as Promise<ServiceProvider>,
+        reviewsResponse.json() as Promise<Review[]>,
+      ])
+
+      if (!cancelled) {
+        setProvider(providerData)
+        setLocalReviews(reviewsData)
+        setIsLoading(false)
+      }
+    }
+
+    load().catch(() => {
+      if (!cancelled) {
+        setProvider(null)
+        setLocalReviews([])
+        setIsLoading(false)
+      }
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [id])
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center px-4">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+      </div>
+    )
+  }
 
   if (!provider) {
     return (
@@ -48,6 +102,11 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
   }
 
   const category = categories.find((c) => c.id === provider.category)
+  const coverageArea = provider.coverageArea || `${provider.location} and nearby areas`
+  const galleryImages =
+    provider.images.length > 0
+      ? provider.images
+      : ["/placeholder.jpg", "/placeholder-user.jpg", "/hero-person.jpg"]
 
   const handleSubmitReview = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -55,17 +114,24 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
 
     setIsSubmitting(true)
 
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000))
+    const response = await fetch(`/api/providers/${id}/reviews`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        userName: "You",
+        rating: newRating,
+        comment: newComment,
+      }),
+    })
 
-    const newReview: Review = {
-      id: `r${Date.now()}`,
-      listingId: id,
-      userName: "You",
-      rating: newRating,
-      comment: newComment,
-      createdAt: new Date().toISOString().split("T")[0],
+    if (!response.ok) {
+      setIsSubmitting(false)
+      return
     }
+
+    const newReview = (await response.json()) as Review
 
     setLocalReviews([newReview, ...localReviews])
     setNewComment("")
@@ -185,6 +251,39 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
                 <Badge key={index} variant="outline" className="px-3 py-1">
                   {service}
                 </Badge>
+              ))}
+            </div>
+          </div>
+
+          {/* Service Coverage */}
+          <div className="mb-8 rounded-xl border border-border bg-card p-6">
+            <h2 className="mb-4 text-xl font-semibold text-foreground">
+              Service Coverage Area
+            </h2>
+            <p className="flex items-center gap-2 text-muted-foreground">
+              <MapPin className="h-4 w-4 text-primary" />
+              {coverageArea}
+            </p>
+          </div>
+
+          {/* Media Gallery */}
+          <div className="mb-8 rounded-xl border border-border bg-card p-6">
+            <h2 className="mb-4 text-xl font-semibold text-foreground">
+              Media Gallery
+            </h2>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              {galleryImages.map((src, index) => (
+                <div
+                  key={`${provider.id}-gallery-${index}`}
+                  className="relative aspect-square overflow-hidden rounded-lg border border-border bg-muted"
+                >
+                  <Image
+                    src={src}
+                    alt={`${provider.businessName} work sample ${index + 1}`}
+                    fill
+                    className="object-cover"
+                  />
+                </div>
               ))}
             </div>
           </div>

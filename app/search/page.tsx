@@ -13,7 +13,7 @@ import {
 import SearchBar from "@/components/SearchBar"
 import Sidebar from "@/components/Sidebar"
 import ServiceCard from "@/components/ServiceCard"
-import { searchProviders, type ServiceProvider } from "@/lib/data"
+import type { ServiceProvider } from "@/lib/types"
 
 function SearchContent() {
   const searchParams = useSearchParams()
@@ -38,20 +38,26 @@ function SearchContent() {
 
   useEffect(() => {
     setIsLoading(true)
-    // Simulate loading
-    const timer = setTimeout(() => {
-      let filtered = searchProviders(initialQuery, {
-        category: selectedCategories.length === 1 ? selectedCategories[0] : undefined,
-        location: selectedLocations.length === 1 ? selectedLocations[0] : undefined,
-        minRating,
-      })
+    let cancelled = false
 
-      // Filter by multiple categories
+    const load = async () => {
+      const params = new URLSearchParams()
+
+      if (initialQuery) params.set("q", initialQuery)
+      if (selectedCategories.length === 1) params.set("category", selectedCategories[0])
+      if (selectedLocations.length === 1) params.set("location", selectedLocations[0])
+      if (minRating > 0) params.set("minRating", String(minRating))
+      if (onlyVerified) params.set("onlyVerified", "true")
+
+      const response = await fetch(`/api/providers?${params.toString()}`)
+      const baseResults = (await response.json()) as ServiceProvider[]
+
+      let filtered = [...baseResults]
+
       if (selectedCategories.length > 1) {
         filtered = filtered.filter((p) => selectedCategories.includes(p.category))
       }
 
-      // Filter by multiple locations
       if (selectedLocations.length > 1) {
         filtered = filtered.filter((p) =>
           selectedLocations.some((loc) =>
@@ -60,7 +66,6 @@ function SearchContent() {
         )
       }
 
-      // Sort results
       switch (sortBy) {
         case "newest":
           filtered.sort(
@@ -78,20 +83,26 @@ function SearchContent() {
           filtered.sort((a, b) => Number(b.verified) - Number(a.verified))
           break
         default:
-          // Relevance - featured first
           filtered.sort((a, b) => (b.featured ? 1 : 0) - (a.featured ? 1 : 0))
       }
 
-      if (onlyVerified) {
-        filtered = filtered.filter((provider) => provider.verified)
+      if (!cancelled) {
+        setResults(filtered)
+        setCurrentPage(1)
+        setIsLoading(false)
       }
+    }
 
-      setResults(filtered)
-      setCurrentPage(1)
-      setIsLoading(false)
-    }, 500)
+    load().catch(() => {
+      if (!cancelled) {
+        setResults([])
+        setIsLoading(false)
+      }
+    })
 
-    return () => clearTimeout(timer)
+    return () => {
+      cancelled = true
+    }
   }, [
     initialQuery,
     selectedCategories,
