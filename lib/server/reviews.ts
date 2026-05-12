@@ -37,6 +37,7 @@ export async function getReviewsByListingIdFromBackend(listingId: string): Promi
 
 export async function createReviewInBackend(input: {
   listingId: string
+  userId?: string
   userName: string
   rating: number
   comment: string
@@ -53,14 +54,28 @@ export async function createReviewInBackend(input: {
     }
   }
 
-  const result = await pool.query<ReviewRow>(
-    `
-      INSERT INTO reviews (listing_id, user_name, rating, comment)
-      VALUES ($1, $2, $3, $4)
-      RETURNING *
-    `,
-    [input.listingId, input.userName, input.rating, input.comment]
-  )
+  let result: { rows: ReviewRow[] }
+  if (input.userId) {
+    result = await pool.query<ReviewRow>(
+      `
+        INSERT INTO reviews (id, listing_id, user_id, user_name, rating, comment)
+        VALUES ($1, $2, $3, $4, $5, $6)
+        ON CONFLICT (listing_id, user_id)
+        DO UPDATE SET rating = EXCLUDED.rating, comment = EXCLUDED.comment, updated_at = NOW()
+        RETURNING id, listing_id, user_name, rating, comment, created_at
+      `,
+      [`rev_${Date.now()}_${Math.random()}`, input.listingId, input.userId, input.userName, input.rating, input.comment]
+    )
+  } else {
+    result = await pool.query<ReviewRow>(
+      `
+        INSERT INTO reviews (id, listing_id, user_name, rating, comment)
+        VALUES ($1, $2, $3, $4, $5)
+        RETURNING id, listing_id, user_name, rating, comment, created_at
+      `,
+      [`rev_${Date.now()}_${Math.random()}`, input.listingId, input.userName, input.rating, input.comment]
+    )
+  }
 
   await pool.query(
     `

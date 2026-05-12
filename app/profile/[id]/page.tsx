@@ -31,6 +31,7 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [localReviews, setLocalReviews] = useState<Review[]>([])
   const [isFavorite, setIsFavorite] = useState(false)
+  const [canReview, setCanReview] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -41,6 +42,8 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
         fetch(`/api/providers/${id}`),
         fetch(`/api/providers/${id}/reviews`),
       ])
+      const meResponse = await fetch("/api/auth/me")
+      if (meResponse.ok) setCanReview(true)
 
       if (!providerResponse.ok) {
         if (!cancelled) {
@@ -111,6 +114,7 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
   const handleSubmitReview = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!newComment.trim()) return
+    if (!canReview) return
 
     setIsSubmitting(true)
 
@@ -201,7 +205,16 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
                   <Button
                     variant="outline"
                     size="icon"
-                    onClick={() => setIsFavorite(!isFavorite)}
+                    onClick={async () => {
+                      const response = await fetch("/api/me/favorites", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ listingId: id }),
+                      })
+                      if (!response.ok) return
+                      const data = (await response.json()) as { favorite: boolean }
+                      setIsFavorite(data.favorite)
+                    }}
                   >
                     <Heart
                       className={`h-5 w-5 ${isFavorite ? "fill-red-500 text-red-500" : ""}`}
@@ -314,9 +327,12 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
                   rows={4}
                 />
               </div>
-              <Button type="submit" disabled={isSubmitting || !newComment.trim()}>
+              <Button type="submit" disabled={isSubmitting || !newComment.trim() || !canReview}>
                 {isSubmitting ? "Submitting..." : "Submit Review"}
               </Button>
+              {!canReview && (
+                <p className="mt-2 text-xs text-muted-foreground">Sign in to leave a review.</p>
+              )}
             </form>
 
             {/* Reviews List */}

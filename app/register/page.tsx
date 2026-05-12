@@ -62,21 +62,48 @@ export default function RegisterPage() {
     }
 
     setIsLoading(true)
+    try {
+      const registerResponse = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone,
+          password: formData.password,
+          role: formData.accountType,
+          businessName: formData.businessName,
+          primaryCategory: formData.primaryCategory,
+        }),
+      })
 
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1500))
+      const registerData = (await registerResponse.json()) as { message?: string }
+      if (!registerResponse.ok) {
+        setError(registerData.message || "Registration failed")
+        return
+      }
 
-    // Mock registration success
-    localStorage.setItem("findit_logged_in", "true")
-    localStorage.setItem("findit_user_role", formData.accountType)
+      const loginResponse = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+          remember: true,
+        }),
+      })
 
-    if (formData.accountType === "provider") {
-      router.push("/dashboard")
-    } else {
-      router.push("/")
+      if (!loginResponse.ok) {
+        router.push("/login")
+        return
+      }
+
+      if (formData.accountType === "provider") router.push("/dashboard")
+      else router.push("/")
+      router.refresh()
+    } finally {
+      setIsLoading(false)
     }
-
-    setIsLoading(false)
   }
 
   return (

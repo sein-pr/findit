@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import {
   Users,
@@ -50,15 +50,30 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import {
-  serviceProviders,
-  pendingListings,
-  reviews,
-  users,
   categories,
 } from "@/lib/data"
+import type { ServiceProvider, Review } from "@/lib/types"
+
+type AdminUser = {
+  id: string
+  name: string
+  email: string
+  role: "user" | "provider" | "admin"
+  suspended: boolean
+}
 
 export default function AdminPage() {
   const [searchQuery, setSearchQuery] = useState("")
+  const [serviceProviders, setServiceProviders] = useState<ServiceProvider[]>([])
+  const [pendingListings, setPendingListings] = useState<ServiceProvider[]>([])
+  const [users, setUsers] = useState<AdminUser[]>([])
+  const [reviews, setReviews] = useState<Review[]>([])
+  const [stats, setStats] = useState({
+    totalUsers: 0,
+    totalListings: 0,
+    pendingListings: 0,
+    totalReviews: 0,
+  })
   const [actionDialog, setActionDialog] = useState<{
     open: boolean
     type: "approve" | "reject" | "delete" | null
@@ -71,15 +86,66 @@ export default function AdminPage() {
     itemType: null,
   })
 
-  const stats = {
-    totalUsers: users.length + 150, // Mock additional users
-    totalListings: serviceProviders.length,
-    pendingListings: pendingListings.length,
-    totalReviews: reviews.length,
-  }
+  useEffect(() => {
+    const load = async () => {
+      const overviewResponse = await fetch("/api/admin/overview")
+      if (!overviewResponse.ok) return
+      const overview = (await overviewResponse.json()) as {
+        users: AdminUser[]
+        listings: ServiceProvider[]
+        stats: { totalUsers: number; totalListings: number; pendingListings: number; totalReviews: number }
+      }
+      setUsers(overview.users)
+      setServiceProviders(overview.listings)
+      setPendingListings(overview.listings.filter((listing) => listing.status === "pending"))
+      setStats(overview.stats)
+
+      const reviewsResponse = await fetch("/api/providers/1/reviews")
+      if (reviewsResponse.ok) {
+        const firstListingReviews = (await reviewsResponse.json()) as Review[]
+        setReviews(firstListingReviews)
+      }
+    }
+    load()
+  }, [])
 
   const handleAction = () => {
-    // Simulate action
+    if (!actionDialog.itemId || !actionDialog.itemType || !actionDialog.type) {
+      setActionDialog({ open: false, type: null, itemId: null, itemType: null })
+      return
+    }
+
+    if (actionDialog.itemType === "listing") {
+      if (actionDialog.type === "approve") {
+        fetch(`/api/admin/listings/${actionDialog.itemId}/status`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: "approved" }),
+        })
+      } else if (actionDialog.type === "reject") {
+        fetch(`/api/admin/listings/${actionDialog.itemId}/status`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: "rejected" }),
+        })
+      } else if (actionDialog.type === "delete") {
+        fetch(`/api/listings/${actionDialog.itemId}`, { method: "DELETE" })
+      }
+    }
+
+    if (actionDialog.itemType === "user") {
+      if (actionDialog.type === "reject") {
+        fetch(`/api/admin/users/${actionDialog.itemId}/suspend`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ suspended: true }),
+        })
+      }
+      if (actionDialog.type === "delete") {
+        fetch(`/api/admin/users/${actionDialog.itemId}`, { method: "DELETE" })
+      }
+    }
+
     setActionDialog({ open: false, type: null, itemId: null, itemType: null })
   }
 

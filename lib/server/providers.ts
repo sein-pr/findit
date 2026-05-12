@@ -1,17 +1,22 @@
 import { serviceProviders } from "@/lib/data"
 import type { ServiceProvider } from "@/lib/types"
 import { getDbPool } from "@/lib/server/db"
+import crypto from "crypto"
 
 type ProviderRow = {
   id: string
+  owner_user_id: string | null
   business_name: string
   category: string
   description: string
+  short_description: string
   location: string
   coverage_area: string | null
+  address: string
   phone: string
   whatsapp: string
   email: string
+  logo_url: string
   images: string[]
   rating: number
   review_count: number
@@ -21,7 +26,7 @@ type ProviderRow = {
   created_at: Date
   views: number
   clicks: number
-  status: "approved" | "pending" | "rejected"
+  status: "approved" | "pending" | "rejected" | "suspended"
 }
 
 function mapProviderRow(row: ProviderRow): ServiceProvider {
@@ -54,6 +59,7 @@ export async function getProvidersFromBackend(filters?: {
   location?: string
   minRating?: number
   onlyVerified?: boolean
+  includePending?: boolean
 }): Promise<ServiceProvider[]> {
   const pool = getDbPool()
   if (!pool) {
@@ -61,7 +67,7 @@ export async function getProvidersFromBackend(filters?: {
   }
 
   const params: Array<string | number | boolean> = []
-  const conditions = [`status = 'approved'`]
+  const conditions = [filters?.includePending ? "status IN ('approved','pending','rejected','suspended')" : `status = 'approved'`]
 
   if (filters?.q) {
     params.push(`%${filters.q}%`)
@@ -117,4 +123,74 @@ export async function getProviderByIdFromBackend(id: string): Promise<ServicePro
   }
 
   return mapProviderRow(result.rows[0])
+}
+
+export async function getProvidersByOwner(userId: string): Promise<ServiceProvider[]> {
+  const pool = getDbPool()
+  if (!pool) return []
+  const result = await pool.query<ProviderRow>(
+    "SELECT * FROM providers WHERE owner_user_id = $1 ORDER BY created_at DESC",
+    [userId]
+  )
+  return result.rows.map(mapProviderRow)
+}
+
+export async function createProvider(input: {
+  ownerUserId: string
+  businessName: string
+  category: string
+  shortDescription: string
+  description: string
+  location: string
+  coverageArea?: string
+  address?: string
+  phone: string
+  whatsapp: string
+  email: string
+  logoUrl?: string
+  services: string[]
+  images: string[]
+}) {
+  const pool = getDbPool()
+  if (!pool) throw new Error("Database is not configured")
+  const id = `prv_${crypto.randomUUID().replaceAll("-", "")}`
+  await pool.query(
+    `
+      INSERT INTO providers (
+        id, owner_user_id, business_name, category, description, short_description, location, coverage_area, address,
+        phone, whatsapp, email, logo_url, images, services, status, featured, verified, sponsored, views, clicks
+      )
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,'pending',FALSE,FALSE,FALSE,0,0)
+    `,
+    [
+      id,
+      input.ownerUserId,
+      input.businessName,
+      input.category,
+      input.description,
+      input.shortDescription,
+      input.location,
+      input.coverageArea || "",
+      input.address || "",
+      input.phone,
+      input.whatsapp,
+      input.email,
+      input.logoUrl || "",
+      input.images,
+      input.services,
+    ]
+  )
+  return getProviderByIdFromBackend(id)
+}
+
+export async function updateProviderStatus(id: string, status: "approved" | "rejected" | "suspended") {
+  const pool = getDbPool()
+  if (!pool) throw new Error("Database is not configured")
+  await pool.query("UPDATE providers SET status = $2 WHERE id = $1", [id, status])
+}
+
+export async function deleteProviderById(id: string) {
+  const pool = getDbPool()
+  if (!pool) throw new Error("Database is not configured")
+  await pool.query("DELETE FROM providers WHERE id = $1", [id])
 }

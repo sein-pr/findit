@@ -1,156 +1,150 @@
 # FindIt Namibia Gap Analysis Checklist
 
 **Source SRS:** `public/find_it_namibia_full_software_requirements_specification.md`  
-**Codebase Assessed:** Next.js app in current repository  
-**Date:** 2026-05-02
+**Codebase Assessed:** Next.js app + Dockerized Postgres backend  
+**Date:** 2026-05-04
 
 Legend: `DONE` `PARTIAL` `MISSING`
 
 ## 4. Functional Requirements
 
 ### 4.1 Homepage
-- `DONE` Navbar includes logo, categories link, login/register, and list-service entry points.
-- `DONE` Hero section includes keyword/category search UI.
-- `DONE` Homepage and search page query parameters are handled consistently (`q` and `keyword`).
-- `DONE` Category grid exists.
-- `DONE` Featured listings section exists.
-- `DONE` Provider CTA section exists.
-- `DONE` Footer links route to working About, Contact, Terms, and Privacy pages.
+- `DONE` Navbar, hero, category browsing, featured listings, and footer links are implemented.
+- `DONE` Homepage listing data is loaded via backend (`/api/providers`) rather than local-only mocks.
 
 ### 4.2 Search Results Page
-- `DONE` Search refinement exists.
-- `DONE` Filters for category/location/rating/verified status are implemented.
-- `DONE` Sorting includes relevance, newest, top rated, and most viewed.
-- `DONE` Listing cards include key summary and contact actions.
-- `DONE` Pagination is implemented on results.
+- `DONE` Search/filter/sort/pagination UI implemented.
+- `DONE` Results load through backend API (`/api/providers`).
 
 ### 4.3 Provider Profile Page
-- `DONE` Basic provider information is present, including category, verification status, and contact details.
-- `DONE` Description section exists.
-- `DONE` Services, operating hours, and explicit service coverage area are shown.
-- `DONE` Media gallery section is implemented.
-- `DONE` Phone and WhatsApp contact actions exist.
-- `DONE` Reviews summary/list/add-review UI exists.
+- `DONE` Provider details, contact actions, gallery, and review display implemented.
+- `DONE` Review submission is backend-backed.
+- `DONE` Review upsert behavior enforces one review per logged-in user per listing.
 
 ### 4.4 Registration
-- `DONE` User registration fields are implemented.
-- `DONE` Provider registration includes both business name and primary category.
+- `DONE` Registration form is implemented.
+- `DONE` Registration is connected to backend auth (`/api/auth/register`).
 
 ### 4.5 Login
-- `DONE` Email/password login UI implemented.
-- `PARTIAL` Remember-me exists in UI but is not enforced server/session-side.
-- `DONE` Forgot-password page and flow are implemented in the frontend.
+- `DONE` Login form implemented.
+- `DONE` Login is connected to backend auth with session cookies (`/api/auth/login`).
+- `DONE` Remember-me now affects session duration in backend session expiry logic.
 
 ### 4.6 Provider Dashboard
-- `PARTIAL` Overview metrics and listing management UI exist, but actions are mock/local.
-- `PARTIAL` Edit/update/upload/deactivate are not wired to persistent backend logic.
+- `PARTIAL` Overview and listing table load backend-owned listings (`/api/me/listings`).
+- `PARTIAL` Deletion is wired (`DELETE /api/listings/[id]`), but full edit/update workflow is still limited.
 
 ### 4.7 Add Listing Page
-- `PARTIAL` Most required fields are present.
-- `PARTIAL` SRS short-description + long-description split is not explicit (single description field).
-- `PARTIAL` Service area field is not explicit.
-- `PARTIAL` Separate logo upload vs gallery upload is not fully implemented.
-- `PARTIAL` Moderation submission is simulated, not backend-driven.
+- `DONE` Backend-driven listing submission (`POST /api/listings`).
+- `DONE` Short description and service area fields added.
+- `PARTIAL` Separate logo/gallery inputs exist, but file uploads are path placeholders (no binary storage pipeline yet).
+- `DONE` Listing enters moderation-style pending flow in backend.
 
 ### 4.8 Reviews System
-- `PARTIAL` Review submission UI exists (rating + comment).
-- `MISSING` One-review-per-user rule not enforced.
-- `MISSING` Review edit flow not implemented.
-- `PARTIAL` Admin moderation UI exists, but no real persistence/workflow.
+- `DONE` Review submit is persistent.
+- `DONE` One-review-per-user rule enforced (unique listing+user).
+- `PARTIAL` Edit flow exists through upsert behavior but no dedicated explicit "Edit Review" UI control.
+- `PARTIAL` Admin review moderation persistence is not fully completed.
 
 ### 4.9 Favorites
-- `MISSING` Full favorites system not implemented (only local profile heart toggle).
+- `DONE` Backend favorites endpoints implemented (`/api/me/favorites`).
+- `DONE` Dedicated favorites page exists (`/favorites`).
 
 ### 4.10 Admin Panel
-- `PARTIAL` Admin dashboard and moderation tabs exist.
-- `PARTIAL` Approve/reject actions present in UI; suspend-provider action missing.
-- `PARTIAL` User delete/inspect partially represented; suspend-user missing.
-- `MISSING` Category management (create/edit/disable) missing.
-- `PARTIAL` Flagged-review metric/workflow not fully implemented.
+- `PARTIAL` Admin overview and moderation now use backend endpoints.
+- `DONE` Approve/reject listing moderation persisted.
+- `DONE` Suspend user endpoint implemented.
+- `DONE` Suspend listing endpoint implemented.
+- `DONE` Category management endpoint implemented (`/api/admin/categories`).
+- `PARTIAL` Flagged review workflow is not fully implemented end-to-end.
 
 ## 5. Information Architecture
 
-- `DONE` Existing: Home, Search, Profile, Login, Register, Dashboard, Add Listing, Admin, Categories, About, Contact, Forgot Password, Terms, Privacy.
-- `MISSING` Missing dedicated pages: Favorites, Settings, Edit Listing, My Listings.
-- `PARTIAL` Admin listings/users/reviews are tabs in one page instead of separate routes.
+- `DONE` Existing pages: Home, Search, Profile, Login, Register, Dashboard, Add Listing, Admin, Categories, About, Contact, Forgot Password, Terms, Privacy.
+- `DONE` Added dedicated pages: Favorites, Settings, My Listings, Edit Listing.
+- `PARTIAL` Admin is still mostly tab-driven in one page rather than separate route groups.
 
 ## 6. User Flows
 
 ### 6.1 User Search Flow
-- `DONE` Flow works from homepage through search results to provider profile and contact actions.
+- `DONE` End-to-end flow works and is backend-fed.
 
 ### 6.2 Provider Listing Flow
-- `PARTIAL` Flow exists in UI; moderation/publication is mocked.
+- `PARTIAL` Creation + pending status is backend-driven; full lifecycle management UI is still incomplete.
 
 ### 6.3 Review Flow
-- `PARTIAL` Submission UI works; login enforcement and moderation persistence are incomplete.
+- `DONE` Submission requires login and persists.
+- `PARTIAL` Full moderation and explicit edit UX still limited.
 
 ## 7. Database Requirements
 
-- `MISSING` No real database integration.
-- `PARTIAL` In-memory/mock model exists in `lib/data.ts` but does not satisfy persistence/schema requirements.
+- `DONE` Postgres schema + persistence implemented in Dockerized DB.
+- `DONE` Providers, users, sessions, reviews, categories, and favorites tables added.
 
 ## 8. API Requirements
 
-- `MISSING` Required `/api/*` endpoints (auth, listings, reviews, favorites, admin) are not implemented.
+- `PARTIAL` Core auth/listings/reviews/favorites/admin endpoints now implemented.
+- `PARTIAL` Remaining domain-specific endpoints (advanced analytics/reporting/monetization flows) still pending.
 
 ## 9. Non-Functional Requirements
 
 ### 9.1 Performance
-- `PARTIAL` No formal verification of load/search latency targets.
+- `PARTIAL` No benchmark suite yet.
 
 ### 9.2 Usability
-- `DONE` Responsive/mobile-first behavior is largely implemented.
+- `DONE` Responsive UI remains intact.
 
 ### 9.3 Security
-- `MISSING` Password hashing, CSRF protection, robust session auth, and full RBAC enforcement not implemented.
+- `PARTIAL` Password hashing + session cookies implemented.
+- `MISSING` CSRF protection and stricter RBAC middleware coverage still required.
 
 ### 9.4 Availability
-- `MISSING` 99% uptime target not operationalized.
+- `PARTIAL` Dockerized services improve operational baseline but formal uptime strategy is not fully defined.
 
 ### 9.5 Scalability
-- `MISSING` No proven scalable backend architecture in current implementation.
+- `PARTIAL` App now has persistent backend architecture; further scaling strategy still needed.
 
 ## 10. Validation Rules
 
-- `PARTIAL` Registration validation mostly present in frontend.
-- `PARTIAL` Listing validation mostly present in frontend.
-- `PARTIAL` Review validation partial; max-comment constraint not clearly enforced.
+- `DONE` Registration validations enforced client-side and server-side.
+- `PARTIAL` Listing validation improved but can be expanded.
+- `DONE` Review rating bounds and comment length checks enforced server-side.
 
 ## 11. Error Handling
 
-- `PARTIAL` Input/empty-state handling exists in places.
-- `DONE` Not-found state exists for missing provider profile.
-- `MISSING` Permission-denied and robust server error handling pages are missing.
+- `PARTIAL` API validation and auth errors now return structured responses.
+- `DONE` Provider not-found handling exists.
+- `PARTIAL` Dedicated permission-denied pages are still limited.
 
 ## 12. Analytics Requirements
 
-- `MISSING` Tracking for profile views, contact clicks, searches, popular categories, and conversion rates is not implemented end-to-end.
+- `MISSING` Full analytics pipeline (searches, conversions, category trends) still pending.
 
 ## 13. Deployment Requirements
 
-- `PARTIAL` Frontend can be deployed, but full backend/database deployment architecture is not implemented.
+- `DONE` Dockerfile + docker-compose multi-container setup (web + postgres).
+- `PARTIAL` CI/CD automation pipeline still pending.
 
 ## 14. Monetization Strategy
 
-- `PARTIAL` Featured listing concept appears in UI/data.
-- `MISSING` Sponsored placements and premium subscription mechanics not implemented.
+- `PARTIAL` Featured/sponsored fields now exist in DB schema.
+- `MISSING` Billing/subscription/payment workflows still pending.
 
 ## 15. MVP Scope
 
-- `PARTIAL` MVP screens are present as a frontend prototype.
-- `MISSING` Production MVP is incomplete without backend/auth/persistence/moderation infrastructure.
+- `PARTIAL` Strong end-to-end baseline with persistent backend and auth now in place.
+- `PARTIAL` Still needs final moderation/analytics/security hardening for production MVP completion.
 
 ## 16. Future Enhancements
 
-- `MISSING` Not implemented (expected for current phase).
+- `MISSING` Not yet implemented (expected).
 
 ---
 
-## Priority Fixes (Suggested)
+## Priority Fixes (Next)
 
-1. Implement backend auth and role-based authorization.
-2. Implement database schema and CRUD APIs for providers/reviews/favorites.
-3. Complete moderation workflow with persistent state transitions.
-4. Add missing pages and workflows for favorites/settings/listing management.
-5. Add analytics instrumentation and reporting pipeline.
+1. Add robust RBAC + route protection middleware and CSRF protection.
+2. Implement full edit-listing workflow and explicit review edit/delete UI.
+3. Complete admin review moderation (flagging + action history).
+4. Implement binary media storage (S3/local volume) for logo/gallery uploads.
+5. Add analytics collection and reporting endpoints.

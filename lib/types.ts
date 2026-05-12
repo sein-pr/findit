@@ -17,7 +17,7 @@ export interface ServiceProvider {
   createdAt: string
   views: number
   clicks: number
-  status: "approved" | "pending" | "rejected"
+  status: "approved" | "pending" | "rejected" | "suspended"
 }
 
 export interface Review {

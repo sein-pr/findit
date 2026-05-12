@@ -24,11 +24,28 @@ export default function Navbar() {
     const isDarkMode = document.documentElement.classList.contains("dark")
     setIsDark(isDarkMode)
 
-    // Check for login status (mock)
-    const loggedIn = localStorage.getItem("findit_logged_in") === "true"
-    const role = localStorage.getItem("findit_user_role") as "user" | "provider" | "admin" || "user"
-    setIsLoggedIn(loggedIn)
-    setUserRole(role)
+    const loadUser = async () => {
+      try {
+        const response = await fetch("/api/auth/me")
+        if (!response.ok) {
+          setIsLoggedIn(false)
+          return
+        }
+        const data = (await response.json()) as {
+          user: { role: "user" | "provider" | "admin" } | null
+        }
+        if (!data.user) {
+          setIsLoggedIn(false)
+          return
+        }
+        setIsLoggedIn(true)
+        setUserRole(data.user.role)
+      } catch {
+        setIsLoggedIn(false)
+      }
+    }
+
+    loadUser()
   }, [])
 
   const toggleDarkMode = () => {
@@ -43,9 +60,8 @@ export default function Navbar() {
     setIsDark(!isDark)
   }
 
-  const handleLogout = () => {
-    localStorage.removeItem("findit_logged_in")
-    localStorage.removeItem("findit_user_role")
+  const handleLogout = async () => {
+    await fetch("/api/auth/logout", { method: "POST" })
     setIsLoggedIn(false)
     window.location.href = "/"
   }

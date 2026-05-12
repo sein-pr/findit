@@ -25,28 +25,30 @@ export default function LoginPage() {
     e.preventDefault()
     setError("")
     setIsLoading(true)
+    try {
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+          remember: formData.remember,
+        }),
+      })
 
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1500))
+      const data = (await response.json()) as { message?: string; role?: "admin" | "provider" | "user" }
+      if (!response.ok) {
+        setError(data.message || "Invalid email or password")
+        return
+      }
 
-    // Mock login validation
-    if (formData.email === "admin@finditnamibia.na" && formData.password === "admin123") {
-      localStorage.setItem("findit_logged_in", "true")
-      localStorage.setItem("findit_user_role", "admin")
-      router.push("/admin")
-    } else if (formData.email === "provider@example.na" && formData.password === "provider123") {
-      localStorage.setItem("findit_logged_in", "true")
-      localStorage.setItem("findit_user_role", "provider")
-      router.push("/dashboard")
-    } else if (formData.email && formData.password) {
-      localStorage.setItem("findit_logged_in", "true")
-      localStorage.setItem("findit_user_role", "user")
-      router.push("/")
-    } else {
-      setError("Invalid email or password")
+      if (data.role === "admin") router.push("/admin")
+      else if (data.role === "provider") router.push("/dashboard")
+      else router.push("/")
+      router.refresh()
+    } finally {
+      setIsLoading(false)
     }
-
-    setIsLoading(false)
   }
 
   return (
@@ -169,7 +171,7 @@ export default function LoginPage() {
             <div className="space-y-1 text-xs text-muted-foreground">
               <p>Admin: admin@finditnamibia.na / admin123</p>
               <p>Provider: provider@example.na / provider123</p>
-              <p>User: any email / any password</p>
+              <p>User: user@example.na / user123</p>
             </div>
           </div>
 

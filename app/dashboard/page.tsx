@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useEffect } from "react"
 import Link from "next/link"
 import {
   Eye,
@@ -39,27 +40,39 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { serviceProviders, categories } from "@/lib/data"
-
-// Simulate provider's listings
-const myListings = serviceProviders.slice(0, 3)
+import { categories } from "@/lib/data"
+import type { ServiceProvider } from "@/lib/types"
 
 export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState("overview")
+  const [myListings, setMyListings] = useState<ServiceProvider[]>([])
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [selectedListing, setSelectedListing] = useState<string | null>(null)
+
+  useEffect(() => {
+    const load = async () => {
+      const response = await fetch("/api/me/listings")
+      if (!response.ok) return
+      const data = (await response.json()) as ServiceProvider[]
+      setMyListings(data)
+    }
+    load()
+  }, [])
 
   const stats = {
     totalViews: myListings.reduce((sum, p) => sum + p.views, 0),
     totalClicks: myListings.reduce((sum, p) => sum + p.clicks, 0),
-    averageRating: (
-      myListings.reduce((sum, p) => sum + p.rating, 0) / myListings.length
-    ).toFixed(1),
+    averageRating: myListings.length
+      ? (myListings.reduce((sum, p) => sum + p.rating, 0) / myListings.length).toFixed(1)
+      : "0.0",
     totalListings: myListings.length,
   }
 
   const handleDelete = () => {
-    // Simulate deletion
+    if (!selectedListing) return
+    fetch(`/api/listings/${selectedListing}`, { method: "DELETE" }).then(() => {
+      setMyListings((prev) => prev.filter((listing) => listing.id !== selectedListing))
+    })
     setDeleteDialogOpen(false)
     setSelectedListing(null)
   }
@@ -282,7 +295,7 @@ export default function DashboardPage() {
                               <Eye className="h-4 w-4" />
                             </Button>
                           </Link>
-                          <Link href={`/add-listing?edit=${listing.id}`}>
+                          <Link href={`/edit-listing/${listing.id}`}>
                             <Button variant="outline" size="sm">
                               <Edit className="h-4 w-4" />
                             </Button>

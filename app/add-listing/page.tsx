@@ -36,13 +36,16 @@ export default function AddListingPage() {
   const [formData, setFormData] = useState({
     businessName: "",
     category: "",
+    shortDescription: "",
     description: "",
     location: "",
+    coverageArea: "",
     address: "",
     phone: "",
     whatsapp: "",
     email: "",
     services: [] as string[],
+    logo: null as File | null,
     images: [] as File[],
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -61,6 +64,15 @@ export default function AddListingPage() {
     setFormData({
       ...formData,
       services: formData.services.filter((s) => s !== service),
+    })
+  }
+
+  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setFormData({
+      ...formData,
+      logo: file,
     })
   }
 
@@ -91,6 +103,9 @@ export default function AddListingPage() {
     if (!formData.category) {
       newErrors.category = "Please select a category"
     }
+    if (!formData.shortDescription.trim() || formData.shortDescription.length < 20) {
+      newErrors.shortDescription = "Short description must be at least 20 characters"
+    }
     if (!formData.description.trim() || formData.description.length < 50) {
       newErrors.description = "Description must be at least 50 characters"
     }
@@ -117,12 +132,36 @@ export default function AddListingPage() {
     if (!validateForm()) return
 
     setIsSubmitting(true)
-
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 2000))
-
-    setIsSubmitting(false)
-    router.push("/dashboard?success=listing-created")
+    try {
+      const response = await fetch("/api/listings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          businessName: formData.businessName,
+          category: formData.category,
+          shortDescription: formData.shortDescription,
+          description: formData.description,
+          location: formData.location,
+          coverageArea: formData.coverageArea,
+          address: formData.address,
+          phone: formData.phone,
+          whatsapp: formData.whatsapp || formData.phone,
+          email: formData.email,
+          logoUrl: formData.logo ? `/uploads/${formData.logo.name}` : "",
+          services: formData.services,
+          images: formData.images.map((image) => `/uploads/${image.name}`),
+        }),
+      })
+      if (!response.ok) {
+        const data = (await response.json()) as { message?: string }
+        setErrors({ submit: data.message || "Could not create listing" })
+        return
+      }
+      router.push("/dashboard?success=listing-created")
+      router.refresh()
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -199,6 +238,23 @@ export default function AddListingPage() {
             </div>
 
             <div className="space-y-2">
+              <Label htmlFor="shortDescription">Short Description *</Label>
+              <Textarea
+                id="shortDescription"
+                placeholder="A short summary shown in cards and search results..."
+                rows={2}
+                value={formData.shortDescription}
+                onChange={(e) =>
+                  setFormData({ ...formData, shortDescription: e.target.value })
+                }
+                className={errors.shortDescription ? "border-destructive" : ""}
+              />
+              {errors.shortDescription && (
+                <p className="text-sm text-destructive">{errors.shortDescription}</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
               <Label htmlFor="description">Description *</Label>
               <Textarea
                 id="description"
@@ -251,6 +307,18 @@ export default function AddListingPage() {
                 {errors.location && (
                   <p className="text-sm text-destructive">{errors.location}</p>
                 )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="coverageArea">Service Area</Label>
+                <Input
+                  id="coverageArea"
+                  placeholder="e.g. Windhoek and surrounding areas"
+                  value={formData.coverageArea}
+                  onChange={(e) =>
+                    setFormData({ ...formData, coverageArea: e.target.value })
+                  }
+                />
               </div>
 
               <div className="space-y-2">
@@ -386,10 +454,23 @@ export default function AddListingPage() {
           <div className="space-y-6">
             <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
               <Upload className="h-5 w-5 text-primary" />
-              Images (Optional)
+              Media Uploads
             </h2>
 
             <div className="space-y-4">
+              <div className="rounded-lg border border-border p-4">
+                <Label htmlFor="logo" className="mb-2 block">Business Logo</Label>
+                <input
+                  id="logo"
+                  type="file"
+                  accept="image/*"
+                  onChange={handleLogoChange}
+                />
+                {formData.logo && (
+                  <p className="mt-2 text-xs text-muted-foreground">{formData.logo.name}</p>
+                )}
+              </div>
+
               <div className="rounded-lg border-2 border-dashed border-border p-6 text-center">
                 <input
                   type="file"
@@ -440,6 +521,8 @@ export default function AddListingPage() {
               )}
             </div>
           </div>
+
+          {errors.submit && <p className="text-sm text-destructive">{errors.submit}</p>}
 
           {/* Submit */}
           <div className="flex flex-col gap-4 border-t border-border pt-8 sm:flex-row sm:justify-end">
