@@ -100,10 +100,15 @@ export default function AdminPage() {
       setPendingListings(overview.listings.filter((listing) => listing.status === "pending"))
       setStats(overview.stats)
 
-      const reviewsResponse = await fetch("/api/providers/1/reviews")
-      if (reviewsResponse.ok) {
-        const firstListingReviews = (await reviewsResponse.json()) as Review[]
-        setReviews(firstListingReviews)
+      const firstListingId = overview.listings[0]?.id
+      if (firstListingId) {
+        const reviewsResponse = await fetch(`/api/providers/${firstListingId}/reviews`)
+        if (reviewsResponse.ok) {
+          const firstListingReviews = (await reviewsResponse.json()) as Review[]
+          setReviews(firstListingReviews)
+        }
+      } else {
+        setReviews([])
       }
     }
     load()

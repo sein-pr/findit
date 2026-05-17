@@ -18,6 +18,8 @@ export default function Navbar() {
   const [isDark, setIsDark] = useState(false)
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [userRole, setUserRole] = useState<"user" | "provider" | "admin">("user")
+  const [userName, setUserName] = useState("")
+  const [avatarUrl, setAvatarUrl] = useState("")
 
   useEffect(() => {
     // Check for dark mode preference
@@ -32,7 +34,7 @@ export default function Navbar() {
           return
         }
         const data = (await response.json()) as {
-          user: { role: "user" | "provider" | "admin" } | null
+          user: { role: "user" | "provider" | "admin"; name: string } | null
         }
         if (!data.user) {
           setIsLoggedIn(false)
@@ -40,6 +42,13 @@ export default function Navbar() {
         }
         setIsLoggedIn(true)
         setUserRole(data.user.role)
+        setUserName(data.user.name)
+
+        const profileResponse = await fetch("/api/me/profile")
+        if (profileResponse.ok) {
+          const profile = (await profileResponse.json()) as { avatar_url?: string }
+          setAvatarUrl(profile.avatar_url || "")
+        }
       } catch {
         setIsLoggedIn(false)
       }
@@ -70,7 +79,9 @@ export default function Navbar() {
     { href: "/", label: "Home" },
     { href: "/categories", label: "Categories" },
     { href: "/search", label: "Find Services" },
-    { href: "/add-listing", label: "List Your Service" },
+    ...(isLoggedIn && (userRole === "provider" || userRole === "admin")
+      ? [{ href: "/add-listing", label: "List Your Service" }]
+      : []),
   ]
 
   return (
@@ -118,11 +129,27 @@ export default function Navbar() {
             {isLoggedIn ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="icon">
-                    <User className="h-5 w-5" />
+                  <Button variant="outline" className="h-auto gap-3 rounded-full px-2 py-1">
+                    <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-primary/10">
+                      {avatarUrl ? (
+                        <img src={avatarUrl} alt={userName} className="h-full w-full object-cover" />
+                      ) : (
+                        <span className="font-semibold text-primary">{(userName || "U").charAt(0)}</span>
+                      )}
+                    </div>
+                    <div className="hidden text-left sm:block">
+                      <p className="max-w-28 truncate text-sm font-semibold text-foreground">{userName || "Account"}</p>
+                      <p className="text-xs text-primary capitalize">{userRole}</p>
+                    </div>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuItem asChild>
+                    <Link href="/account" className="flex items-center gap-2">
+                      <User className="h-4 w-4" />
+                      My Profile
+                    </Link>
+                  </DropdownMenuItem>
                   <DropdownMenuItem asChild>
                     <Link href="/dashboard" className="flex items-center gap-2">
                       <LayoutDashboard className="h-4 w-4" />
@@ -196,6 +223,13 @@ export default function Navbar() {
               <div className="border-t border-border pt-4">
                 {isLoggedIn ? (
                   <>
+                    <Link
+                      href="/account"
+                      className="block py-2 text-sm font-medium text-muted-foreground hover:text-primary"
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      My Profile
+                    </Link>
                     <Link
                       href="/dashboard"
                       className="block py-2 text-sm font-medium text-muted-foreground hover:text-primary"

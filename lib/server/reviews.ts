@@ -1,4 +1,3 @@
-import { reviews } from "@/lib/data"
 import { getDbPool } from "@/lib/server/db"
 import type { Review } from "@/lib/types"
 
@@ -25,7 +24,7 @@ function mapReviewRow(row: ReviewRow): Review {
 export async function getReviewsByListingIdFromBackend(listingId: string): Promise<Review[]> {
   const pool = getDbPool()
   if (!pool) {
-    return reviews.filter((review) => review.listingId === listingId)
+    return []
   }
 
   const result = await pool.query<ReviewRow>(
@@ -44,14 +43,7 @@ export async function createReviewInBackend(input: {
 }): Promise<Review> {
   const pool = getDbPool()
   if (!pool) {
-    return {
-      id: `r-${Date.now()}`,
-      listingId: input.listingId,
-      userName: input.userName,
-      rating: input.rating,
-      comment: input.comment,
-      createdAt: new Date().toISOString().split("T")[0],
-    }
+    throw new Error("Database is not configured")
   }
 
   let result: { rows: ReviewRow[] }

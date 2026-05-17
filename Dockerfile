@@ -1,23 +1,18 @@
-# syntax=docker/dockerfile:1
-
-FROM node:20-alpine AS deps
+FROM node:20 AS deps
 WORKDIR /app
-RUN corepack enable
-COPY package.json pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile
+COPY package.json package-lock.json ./
+RUN sh -lc 'for i in 1 2 3; do npm ci --include=dev --no-audit --no-fund && break; echo "npm ci failed, retrying... ($i/3)"; sleep 5; done; test -x node_modules/.bin/next'
 
-FROM node:20-alpine AS builder
+FROM node:20 AS builder
 WORKDIR /app
-RUN corepack enable
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-RUN pnpm build
+RUN npm run build
 
-FROM node:20-alpine AS runner
+FROM node:20 AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=3000
-RUN corepack enable
 
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
@@ -26,4 +21,4 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/next.config.mjs ./next.config.mjs
 
 EXPOSE 3000
-CMD ["node", "node_modules/next/dist/bin/next", "start"]
+CMD ["npm", "start"]

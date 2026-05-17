@@ -1,4 +1,3 @@
-import { serviceProviders } from "@/lib/data"
 import type { ServiceProvider } from "@/lib/types"
 import { getDbPool } from "@/lib/server/db"
 import crypto from "crypto"
@@ -63,7 +62,7 @@ export async function getProvidersFromBackend(filters?: {
 }): Promise<ServiceProvider[]> {
   const pool = getDbPool()
   if (!pool) {
-    return serviceProviders
+    return []
   }
 
   const params: Array<string | number | boolean> = []
@@ -111,7 +110,7 @@ export async function getProvidersFromBackend(filters?: {
 export async function getProviderByIdFromBackend(id: string): Promise<ServiceProvider | null> {
   const pool = getDbPool()
   if (!pool) {
-    return serviceProviders.find((provider) => provider.id === id) ?? null
+    return null
   }
 
   const result = await pool.query<ProviderRow>(
@@ -193,4 +192,17 @@ export async function deleteProviderById(id: string) {
   const pool = getDbPool()
   if (!pool) throw new Error("Database is not configured")
   await pool.query("DELETE FROM providers WHERE id = $1", [id])
+}
+
+export async function getProviderOwnerUserId(id: string): Promise<string | null> {
+  const pool = getDbPool()
+  if (!pool) return null
+
+  const result = await pool.query<{ owner_user_id: string | null }>(
+    "SELECT owner_user_id FROM providers WHERE id = $1 LIMIT 1",
+    [id]
+  )
+
+  if (!result.rowCount) return null
+  return result.rows[0].owner_user_id
 }

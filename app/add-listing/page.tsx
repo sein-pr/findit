@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import {
@@ -32,6 +33,8 @@ import { categories, locations } from "@/lib/data"
 export default function AddListingPage() {
   const router = useRouter()
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [canCreateListing, setCanCreateListing] = useState(false)
+  const [isCheckingAccess, setIsCheckingAccess] = useState(true)
   const [currentService, setCurrentService] = useState("")
   const [formData, setFormData] = useState({
     businessName: "",
@@ -49,6 +52,29 @@ export default function AddListingPage() {
     images: [] as File[],
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
+
+  useEffect(() => {
+    const loadUser = async () => {
+      try {
+        const response = await fetch("/api/auth/me")
+        if (!response.ok) {
+          router.push("/login")
+          return
+        }
+
+        const data = (await response.json()) as {
+          user: { role: "user" | "provider" | "admin" } | null
+        }
+
+        const allowed = data.user?.role === "provider" || data.user?.role === "admin"
+        setCanCreateListing(Boolean(allowed))
+      } finally {
+        setIsCheckingAccess(false)
+      }
+    }
+
+    loadUser()
+  }, [router])
 
   const addService = () => {
     if (currentService.trim() && !formData.services.includes(currentService.trim())) {
@@ -129,6 +155,11 @@ export default function AddListingPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
+    if (!canCreateListing) {
+      setErrors({ submit: "Only provider and admin accounts can submit listings." })
+      return
+    }
+
     if (!validateForm()) return
 
     setIsSubmitting(true)
@@ -166,6 +197,14 @@ export default function AddListingPage() {
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
+      {isCheckingAccess ? (
+        <p className="text-sm text-muted-foreground">Checking your access...</p>
+      ) : null}
+      {!isCheckingAccess && !canCreateListing ? (
+        <div className="mb-6 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
+          You need a provider account to upload listings. Update your account type, then try again.
+        </div>
+      ) : null}
       {/* Back Link */}
       <Link
         href="/dashboard"
